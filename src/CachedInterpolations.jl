@@ -1,5 +1,3 @@
-__precompile__()
-
 module CachedInterpolations
 
 using Interpolations, Ratios, Base.Cartesian
@@ -48,7 +46,7 @@ A single `CachedInterpolation` represents a "movable"
 i_2)`. An array of these objects thus implements an array-of-arrays
 interface. Create them with `cachedinterpolators`.
 """
-type CachedInterpolation{T,N,M,O,K} <: AbstractInterpolation{T,N,BSpline{Quadratic{InPlace}},OnCell}
+mutable struct CachedInterpolation{T,N,M,O,K} <: AbstractInterpolation{T,N,BSpline{Quadratic{InPlace}}}
     # Note: M = N+K
     coefs::Array{T,M}   # tiled array of 3x3x... buffers
     parent::Array{T,M}  # the overall array (`P` in the documentation above)
@@ -57,13 +55,13 @@ type CachedInterpolation{T,N,M,O,K} <: AbstractInterpolation{T,N,BSpline{Quadrat
 end
 
 const splitN = Base.IteratorsMD.split
-Base.size{T,N}(itp::CachedInterpolation{T,N})    = splitN(size(itp.parent), Val{N})[1]
-Base.size{T,N}(itp::CachedInterpolation{T,N}, d) = d <= N ? size(itp.parent, d) : 1
+Base.size(itp::CachedInterpolation{T,N}) where {T,N}    = splitN(size(itp.parent), Val(N))[1]
+Base.size(itp::CachedInterpolation{T,N}, d) where {T,N} = d <= N ? size(itp.parent, d) : 1
 
-Base.indices{T,N,M,O}(itp::CachedInterpolation{T,N,M,O}) =
-    map((x,o)->x-o, splitN(indices(itp.parent), Val{N})[1], O)
-Base.indices{T,N,M,O}(itp::CachedInterpolation{T,N,M,O}, d) =
-    d <= N ? indices(itp.parent, d) - O[d] : Base.OneTo(1)
+Base.axes(itp::CachedInterpolation{T,N,M,O}) where {T,N,M,O} =
+    map((x,o)->x-o, splitN(axes(itp.parent), Val(N))[1], O)
+Base.axes(itp::CachedInterpolation{T,N,M,O}, d) where {T,N,M,O} =
+    d <= N ? axes(itp.parent, d) - O[d] : Base.OneTo(1)
 
 """
 
@@ -87,11 +85,11 @@ coordinates within a tile.  For example, one can mimic a
 `CenterIndexedArray` when `size(parent, d)` is odd for the first `N`
 dimensions and you supply `origin = (div(size(parent,1)+1, 2), ...)`.
 """
-function cachedinterpolators{T,M}(parent::Array{T,M}, N, origin=ntuple(d->0,N))
+function cachedinterpolators(parent::Array{T,M}, N, origin=ntuple(d->0,N)) where {T,M}
     0 <= N <= M || error("N must be between 0 and $M")
     length(origin) == N || throw(DimensionMismatch("length(origin) = $(length(origin)) is inconsistent with $N interpolating dimensions"))
     sz3 = ntuple(d->d<=N ? 3 : size(parent,d), M)::NTuple{M,Int}
-    buffer = Array{eltype(parent)}(sz3)
+    buffer = Array{eltype(parent)}(undef, sz3)
     sztiles = size(parent)[N+1:end]  # the tiling dimensions of parent
     # use an impossible initial value (post-offset by origin) to
     # ensure the first access will result in a cache miss
@@ -100,15 +98,15 @@ function cachedinterpolators{T,M}(parent::Array{T,M}, N, origin=ntuple(d->0,N))
 end
 
 # function-barriered to circumvent type-instability in sztiles
-@noinline function cachedinterpolators{T,N,M,K}(buffer::Array{T,M}, parent::Array{T,M}, origin::NTuple{N,Int}, center::NTuple{N,Int}, sztiles::NTuple{K,Int})
-    itps = Array{CachedInterpolation{T,N,M,origin}}(sztiles)
-    for tileindex in CartesianRange(sztiles)
+@noinline function cachedinterpolators(buffer::Array{T,M}, parent::Array{T,M}, origin::NTuple{N,Int}, center::NTuple{N,Int}, sztiles::NTuple{K,Int}) where {T,N,M,K}
+    itps = Array{CachedInterpolation{T,N,M,origin,K}}(undef, sztiles)
+    for tileindex in CartesianIndices(sztiles)
         itps[tileindex] = CachedInterpolation{T,N,M,origin,K}(buffer, parent, center, tileindex)
     end
     itps
 end
 
-@generated function Base.getindex{T,N,M,O}(itp::CachedInterpolation{T,N,M,O}, xs::Number...)
+@generated function Base.getindex(itp::CachedInterpolation{T,N,M,O,K}, xs::Number...) where {T,N,M,O,K}
     length(xs) == N || error("Must use $N indexes")
     ibsyms = [Symbol("ib_", d) for d = 1:N]
     ipsyms = [Symbol("ip_", d) for d = 1:N]
@@ -134,25 +132,26 @@ end
         @nexprs $N d->(ixp_d = 3)
         $ixlast_ex
         $(Interpolations.coefficients(IT, N+1))
+        # @nexprs $N+1 d->(Interpolations.coefficients(Interpolations.iextract(IT, d)))
         @inbounds ret = $(Interpolations.index_gen(IT, N+1))
         ret
     end
 end
 
-immutable CoefsWrapper{N,A}
+struct CoefsWrapper{N,A}
     coefs::A
 end
 
-Base.size{N}(itp::CoefsWrapper{N}) = splitN(size(itp.coefs), Val{N})[1]
-Base.size{N}(itp::CoefsWrapper{N}, d) = d <= N ? size(itp.coefs, d) : 1
+Base.size(itp::CoefsWrapper{N}) where {N} = splitN(size(itp.coefs), Val(N))[1]
+Base.size(itp::CoefsWrapper{N}, d) where {N} = d <= N ? size(itp.coefs, d) : 1
 
 # FIXME: this function cheats dangerously, because it does _not_
 # update the cache. This is equivalent to the assumption you've called
 # getindex for the current `(x_1, x_2, ...)` location before calling
 # gradient!. If this is not true, you'll get wrong answers.
-@generated function Interpolations.gradient!{T,N,M,O,K}(g::AbstractVector, A::CachedInterpolation{T,N,M,O,K}, ys::Vararg{Number,N})
-    IT = Tuple{ntuple(d->BSpline{Quadratic{InPlace}}, N)..., ntuple(d->NoInterp, K)...}
-    BS = Interpolations.BSplineInterpolation{T,M,Array{T,M},IT,OnCell,0}
+@generated function Interpolations.gradient!(g::AbstractVector, A::CachedInterpolation{T,N,M,O,K}, ys::Vararg{Number,N}) where {T,N,M,O,K}
+    IT = Tuple{ntuple(d->BSpline{Quadratic{InPlace{OnCell}}}, N)..., ntuple(d->NoInterp, K)...}
+    BS = Interpolations.BSplineInterpolation{T,M,Array{T,M},IT,Tuple{Vararg{AbstractUnitRange,L}}} where L
     ex = Interpolations.gradient_impl(BS)
     quote
         xs = @ntuple $M d->(d <= $N ? ys[d] - round(Int, ys[d]) + 2 : A.tileindex[d-$N])

@@ -1,0 +1,14 @@
+name = "CachedInterpolations"
+uuid = "b9709bfb-d23d-5560-8276-8c35c4b76823"
+authors = ["Tim Holy <tim.holy@gmail.com>"]
+version = "0.0.0"
+
+[deps]
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+Ratios = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
