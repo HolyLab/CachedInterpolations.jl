@@ -9,7 +9,7 @@ notifications:
   email: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'using Pkg; Pkg.build(); Pkg.test'
+  - julia -e 'using Pkg; Pkg.build(); Pkg.test("CachedInterpolations")'
 after_success:
 # update the documentation
   - julia -e 'using Pkg; Pkg.add("Documenter")'
