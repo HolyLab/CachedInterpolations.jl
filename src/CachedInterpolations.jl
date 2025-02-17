@@ -1,7 +1,7 @@
 module CachedInterpolations
 
 using Interpolations, StaticArrays
-using Interpolations: weightedindexes, value_weights, gradient_weights
+using Interpolations: weightedindexes, value_weights, gradient_weights, InterpGetindex
 import Base: getindex
 
 export CachedInterpolation, cachedinterpolators
@@ -122,8 +122,9 @@ end
         end
         itp.center = newcenter
     end
+    icoefs = InterpGetindex(coefs)
     wis = weightedindexes((value_weights,), itpinfo, axes(coefs), (fxs..., Tuple(tileindex)...))
-    return coefs[wis...]
+    return icoefs[wis...]
 end
 
 struct CoefsWrapper{N,A}
@@ -142,7 +143,8 @@ Base.size(itp::CoefsWrapper{N}, d) where {N} = d <= N ? size(itp.coefs, d) : 1
     xs = ys .- round.(Int, ys) .+ 2
     itpinfo = (ntuple(d->BSpline(Quadratic(InPlace(OnCell()))), Val(N))..., ntuple(d->NoInterp(), Val(K))...)
     wis = weightedindexes((value_weights, gradient_weights), itpinfo, axes(coefs), (xs..., Tuple(tileindex)...))
-    return SVector(map(inds->coefs[inds...], wis))
+    icoefs = InterpGetindex(coefs)
+    return SVector(map(inds->icoefs[inds...], wis))
 end
 
 @inline function Interpolations.gradient!(g::AbstractVector, itp::CachedInterpolation{T,N,M,O,K}, ys::Vararg{Number,N}) where {T,N,M,O,K}
