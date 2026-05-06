@@ -20,12 +20,12 @@ quadratic interpolation of a large multidimensional array.  The first
     end
 ```
 where `x_1`, `x_2` are floating-point indexes and `i_1`, `i_2` are
-integer indexes.  A CachedInterpolation simulates an array-of-arrays
+integer indexes.  A `CachedInterpolation` simulates an array-of-arrays
 interface for this task, while in reality using only a single
 underlying `P` array.
 
 The performance enhancement comes from caching: when `P` is bigger
-than the computer's memory, `P` may be a mmapped-file, and direct
+than the computer's memory, `P` may be a memory-mapped file, and direct
 access to values of `P` will therefore be limited by disk I/O. If one
 has a task in which all elements of `B` have to be evaluated
 repeatedly for different values of `y_1`, `y_2`, but that these values
@@ -43,10 +43,32 @@ Create an array-of-interpolating arrays with the function
 CachedInterpolations
 
 """
-A single `CachedInterpolation` represents a "movable"
-3-by-3-by... view of `P[:, :, i_1, i_2]` for a specific `(i_1,
-i_2)`. An array of these objects thus implements an array-of-arrays
-interface. Create them with `cachedinterpolators`.
+    CachedInterpolation
+
+A single interpolating tile over a tiling array. A `CachedInterpolation`
+represents a "movable" 3×3×... view of `P[:, :, i_1, i_2]` for a specific
+`(i_1, i_2)` pair. Calling `itp(y_1, y_2)` returns the scalar
+quadratic-interpolated value at position `(y_1, y_2)` (floating-point or
+integer coordinates), caching the surrounding 3×3×... block of `P` to avoid
+redundant I/O when coordinates change by only a small amount between calls.
+Integer-index access is also available via `itp[y_1, y_2]`.
+
+Create arrays of `CachedInterpolation`s with [`cachedinterpolators`](@ref).
+
+# Examples
+```jldoctest
+julia> A = reshape([0.0; 1.0; 0.0], (3, 1));
+
+julia> itps = cachedinterpolators(A, 1);
+
+julia> itp = itps[1];
+
+julia> itp(2.0)   # quadratic-interpolated peak of [0, 1, 0]
+0.75
+
+julia> itp(1.5)   # off-center
+0.5
+```
 """
 mutable struct CachedInterpolation{T, N, M, O, K} <: AbstractInterpolation{T, N, BSpline{Quadratic{InPlace}}}
     # Note: M = N+K
@@ -66,26 +88,48 @@ Base.axes(itp::CachedInterpolation{T, N, M, O}, d) where {T, N, M, O} =
     d <= N ? axes(itp.parent, d) .- O[d] : Base.OneTo(1)
 
 """
+    cachedinterpolators(parent::Array, N)
+    cachedinterpolators(parent::Array, N, origin)
 
-`itps = cachedinterpolators(parent, N, [origin=(0,0,...)])` creates an
-array-of-CachedInterpolation arrays from an underlying `parent` array,
-where the first `N` dimensions of `parent` are interpolating.  The
-equivalent of
-```
-    parent[y_1, y_2, i_1, i_2]
-```
-becomes
-```
-    itp = itps[i_1, i_2]
-    itp[y_1, y_2]
-```
-and `itp` caches the needed values of `parent[:,:,i_1,i_2]` centered
-around `y_1, y_2`.
+Create an `Array` of [`CachedInterpolation`](@ref) objects from the dense array
+`parent`, where the first `N` dimensions of `parent` are interpolating and the
+remaining dimensions are tiling. `parent` must be a dense `Array`; subtypes of
+`AbstractArray` such as `SubArray` or `SharedArray` are not supported.
 
-Optionally specify the `origin` argument to offset the `y_i`
-coordinates within a tile.  For example, one can mimic a
-`CenterIndexedArray` when `size(parent, d)` is odd for the first `N`
-dimensions and you supply `origin = (div(size(parent,1)+1, 2), ...)`.
+The expression `parent[y_1, y_2, i_1, i_2]` becomes:
+
+```julia
+itp = itps[i_1, i_2]
+itp(y_1, y_2)
+```
+
+Each `itp` caches a 3×3×... block of `parent` centered on the most-recent
+evaluation point, so repeated calls with nearby coordinates avoid redundant
+memory or disk I/O (useful when `parent` is a memory-mapped file).
+
+The optional `origin` argument is a tuple of `N` integers (default: all zeros)
+that offsets the coordinate system. With a nonzero `origin`, dimension `d` is
+addressed as `y_d + origin[d]` in `parent`, shifting the user-visible axes by
+`-origin`. For example, setting `origin = (div(size(parent,d)+1, 2) for d in
+1:N)` centers the axes at zero when the interpolating dimensions have odd size.
+
+# Examples
+```jldoctest
+julia> A = reshape([0.0; 1.0; 0.0], (3, 1));
+
+julia> itps = cachedinterpolators(A, 1);
+
+julia> itps[1](2.0)   # quadratic-interpolated peak of [0, 1, 0]
+0.75
+
+julia> itps_c = cachedinterpolators(A, 1, (2,));  # origin at index 2
+
+julia> axes(itps_c[1])   # coordinates shifted; 0 now addresses the peak
+(-1:1,)
+
+julia> itps_c[1](0.0)    # peak via centered coordinates
+0.75
+```
 """
 function cachedinterpolators(parent::Array{T, M}, N, origin = ntuple(d -> 0, N)) where {T, M}
     0 <= N <= M || error("N must be between 0 and $M")
