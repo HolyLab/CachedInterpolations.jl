@@ -1,5 +1,5 @@
 import CachedInterpolations
-using Interpolations, Test
+using Aqua, Interpolations, Test
 
 @testset "CachedInterpolations" begin
     A = reshape([0; 1; 0], (3, 1))
@@ -38,4 +38,8 @@ using Interpolations, Test
     Ai = interpolate!(A, (Q, Q, NoInterp(), NoInterp(), NoInterp()))
     C = CachedInterpolations.cachedinterpolators(A, 2, (4, 4))
     @test @inferred(C[1, 2, 2](-0.8, 0.8)) ≈ Ai(3.2, 4.8, 1, 2, 2)
+
+    @testset "Aqua" begin
+        Aqua.test_all(CachedInterpolations)
+    end
 end

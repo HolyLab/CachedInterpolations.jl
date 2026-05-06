@@ -1,0 +1,11 @@
+Optional: design review
+Optional: API review
+DONE: update .gitignore
+DONE: format with runic
+DONE: add Aqua.jl
+TODO: remove deprecations
+TODO: add ExplicitImports.jl
+TODO: limit struct mutability
+TODO: improve test coverage
+TODO: add and improve docstrings
+TODO: add or improve documentation
