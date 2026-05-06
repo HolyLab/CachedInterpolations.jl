@@ -6,6 +6,6 @@ DONE: add Aqua.jl
 DONE: remove deprecations
 DONE: add ExplicitImports.jl
 DONE: limit struct mutability
-TODO: improve test coverage
-TODO: add and improve docstrings
+DONE: improve test coverage
+DONE: add and improve docstrings
 TODO: add or improve documentation
