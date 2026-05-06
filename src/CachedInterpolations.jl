@@ -50,10 +50,10 @@ interface. Create them with `cachedinterpolators`.
 """
 mutable struct CachedInterpolation{T, N, M, O, K} <: AbstractInterpolation{T, N, BSpline{Quadratic{InPlace}}}
     # Note: M = N+K
-    coefs::Array{T, M}   # tiled array of 3x3x... buffers
-    parent::Array{T, M}  # the overall array (`P` in the documentation above)
+    const coefs::Array{T, M}   # tiled array of 3x3x... buffers
+    const parent::Array{T, M}  # the overall array (`P` in the documentation above)
     center::NTuple{N, Int}  # rounded (y_1, y_2) of prev. eval for this tile
-    tileindex::CartesianIndex{K}
+    const tileindex::CartesianIndex{K}
 end
 
 const splitN = Base.IteratorsMD.split
