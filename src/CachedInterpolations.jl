@@ -128,13 +128,6 @@ end
     return icoefs[wis...]
 end
 
-struct CoefsWrapper{N, A}
-    coefs::A
-end
-
-Base.size(itp::CoefsWrapper{N}) where {N} = splitN(size(itp.coefs), Val(N))[1]
-Base.size(itp::CoefsWrapper{N}, d) where {N} = d <= N ? size(itp.coefs, d) : 1
-
 # FIXME: this function cheats dangerously, because it does _not_
 # update the cache. This is equivalent to the assumption you've called
 # getindex for the current `(x_1, x_2, ...)` location before calling

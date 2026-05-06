@@ -25,12 +25,26 @@ using Aqua, ExplicitImports, Interpolations, Test
 
     @test Interpolations.gradient(C[1, 2, 2], 3.2, 3.8) === Interpolations.gradient(Ai, 3.2, 3.8, 1, 2, 2)
 
+    # gradient!
+    g = zeros(2)
+    Interpolations.gradient!(g, C[1, 2, 2], 3.2, 3.8)
+    @test g ≈ collect(Interpolations.gradient(C[1, 2, 2], 3.2, 3.8))
+
+    # getindex with Integer arguments
+    @test C[1, 2, 2][3, 4] == C[1, 2, 2](3.0, 4.0)
+
     # With origin
     C = CachedInterpolations.cachedinterpolators(A, 2, (4, 4))
     @test C[1, 2, 2](-0.8, 0.8) ≈ Ai(3.2, 4.8, 1, 2, 2)
     @test C[1, 2, 2](-0.8, 0.9) ≈ Ai(3.2, 4.9, 1, 2, 2)
     @test C[1, 2, 2](-0.8, -0.2) ≈ Ai(3.2, 3.8, 1, 2, 2)
     @test Interpolations.gradient(C[1, 2, 2], -0.8, -0.2) ≈ Interpolations.gradient(Ai, 3.2, 3.8, 1, 2, 2)
+
+    # axes with origin offset
+    c_orig = C[1, 1, 1]
+    @test axes(c_orig) == (-3:3, -3:3)
+    @test axes(c_orig, 1) == -3:3
+    @test axes(c_orig, 3) == Base.OneTo(1)
 
     # Check for Float32 with Float64 indexes, since that's the
     # default mismatch case
