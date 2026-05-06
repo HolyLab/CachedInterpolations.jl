@@ -69,7 +69,7 @@ using Aqua, Documenter, ExplicitImports, Interpolations, Test
         test_explicit_imports(
             CachedInterpolations;
             all_explicit_imports_are_public=(; ignore=(:weightedindexes, :value_weights, :gradient_weights, :InterpGetindex)),
-            all_qualified_accesses_are_public=(; ignore=(:IteratorsMD, :gradient, :gradient!, :split)),
+            all_qualified_accesses_are_public=(; ignore=(:IteratorsMD, :gradient, :gradient!, :split, :OneTo)),
         )
     end
 end
