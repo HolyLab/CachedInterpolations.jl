@@ -1,7 +1,8 @@
 module CachedInterpolations
 
-using Interpolations, StaticArrays
+using Interpolations: Interpolations, AbstractInterpolation, BSpline, InPlace, NoInterp, OnCell, Quadratic
 using Interpolations: weightedindexes, value_weights, gradient_weights, InterpGetindex
+using StaticArrays: StaticArrays, SVector
 import Base: getindex
 
 export CachedInterpolation, cachedinterpolators

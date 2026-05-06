@@ -1,5 +1,5 @@
 import CachedInterpolations
-using Aqua, Interpolations, Test
+using Aqua, ExplicitImports, Interpolations, Test
 
 @testset "CachedInterpolations" begin
     A = reshape([0; 1; 0], (3, 1))
@@ -41,5 +41,16 @@ using Aqua, Interpolations, Test
 
     @testset "Aqua" begin
         Aqua.test_all(CachedInterpolations)
+    end
+
+    @testset "ExplicitImports" begin
+        # weightedindexes, value_weights, gradient_weights, InterpGetindex, gradient, gradient!
+        # are non-public Interpolations internals required by this package's implementation.
+        # Base.IteratorsMD.split is a non-public Base internal with no public alternative.
+        test_explicit_imports(
+            CachedInterpolations;
+            all_explicit_imports_are_public=(; ignore=(:weightedindexes, :value_weights, :gradient_weights, :InterpGetindex)),
+            all_qualified_accesses_are_public=(; ignore=(:IteratorsMD, :gradient, :gradient!, :split)),
+        )
     end
 end
