@@ -157,8 +157,4 @@ end
 # if AbstractInterpolation <: AbstractArray goes away, this can be deprecated
 getindex(itp::CachedInterpolation{T, N, M, O, K}, xs::Vararg{Integer, N}) where {T, N, M, O, K} = itp(xs...)
 
-### Deprecations
-
-@deprecate getindex(itp::CachedInterpolation{T, N, M, O, K}, xs::Vararg{Number, N}) where {T, N, M, O, K} itp(xs...)
-
 end # module
