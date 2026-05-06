@@ -1,19 +1,22 @@
 name = "CachedInterpolations"
 uuid = "b9709bfb-d23d-5560-8276-8c35c4b76823"
-authors = ["Tim Holy <tim.holy@gmail.com>"]
 version = "0.1.1"
+authors = ["Tim Holy <tim.holy@gmail.com>"]
 
 [deps]
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+Aqua = "0.8"
 Interpolations = "0.14 - 1"
 StaticArrays = "1"
+Test = "1"
 julia = "1.10"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Aqua", "Test"]
