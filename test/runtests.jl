@@ -24,6 +24,8 @@ using Aqua, Documenter, ExplicitImports, Interpolations, Test
     @test C[1, 2, 2](3.2, 3.8) == Ai(3.2, 3.8, 1, 2, 2)
 
     @test Interpolations.gradient(C[1, 2, 2], 3.2, 3.8) === Interpolations.gradient(Ai, 3.2, 3.8, 1, 2, 2)
+    # gradient cache miss: different center forces cache update (lines 189-193)
+    @test Interpolations.gradient(C[1, 2, 2], 5.2, 5.8) === Interpolations.gradient(Ai, 5.2, 5.8, 1, 2, 2)
 
     # gradient!
     g = zeros(2)
